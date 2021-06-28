@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class tempButtonBehaviourScript : MonoBehaviour
 {
+    private bool resetFlag = false;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -19,26 +21,34 @@ public class tempButtonBehaviourScript : MonoBehaviour
     public void OnClick()
     {
         Debug.Log("tempButton OnClick! " + gameObject.name);
-        switch (HeadsUpHoldemGame.Mode)
+        if (resetFlag)
         {
-            case 1:
-                HeadsUpHoldemGame.Preflop();
-                break;
-            case 2:
-                HeadsUpHoldemGame.Flop();
-                break;
-            case 3:
-                HeadsUpHoldemGame.Turn();
-                break;
-            case 4:
-                HeadsUpHoldemGame.River();
-                break;
-            case 5:
-                HeadsUpHoldemGame.Showdown();
-                break;
-            default:
-                HeadsUpHoldemGame.Reset();
-                break;
+            switch (HeadsUpHoldemGame.Mode)
+            {
+                case 1:
+                    HeadsUpHoldemGame.Preflop();
+                    break;
+                case 2:
+                    HeadsUpHoldemGame.Flop();
+                    break;
+                case 3:
+                    HeadsUpHoldemGame.Turn();
+                    break;
+                case 4:
+                    HeadsUpHoldemGame.River();
+                    break;
+                case 5:
+                    HeadsUpHoldemGame.Showdown();
+                    break;
+                default:
+                    HeadsUpHoldemGame.Reset();
+                    break;
+            }
+        }
+        else
+        {
+            HeadsUpHoldemGame.ResetGame();
+            resetFlag = true;
         }
     }
 

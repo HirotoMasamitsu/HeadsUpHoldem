@@ -10,12 +10,20 @@ public static class HeadsUpHoldemGame
 {
     private static System.Random rand = new System.Random();
     private static Deck deck;
+    private static HeadsUpGameObject gameObj = new HeadsUpGameObject();
 
     private static Text playerHandText;
     private static Text enemyHandText;
+    private static Text potText;
+    private static GameObject dealerButton;
 
-    public static Card[] PlayerHands { get; private set; }
-    public static Card[] EnemyHands { get; private set; }
+
+    public static PlayerStatus Player { get; private set; }
+    public static PlayerStatus Enemy { get; private set; }
+
+    public static PlayerGetPokerAction PlayerAction { get; private set; }
+    public static EnemyGetPokerAction EnemyAction { get; private set; }
+
     public static Card[] BoardCards { get; private set; }
     public static Card[] BannedCards { get; private set; }
 
@@ -35,6 +43,16 @@ public static class HeadsUpHoldemGame
     public static void SetEnemyHandText(Text textUI)
     {
         enemyHandText = textUI;
+    }
+
+    public static void SetPotText(Text textUI)
+    {
+        potText = textUI;
+    }
+
+    public static void SetDealerButton(GameObject obj)
+    {
+        dealerButton = obj;
     }
 
     public static void SetPlayerHandsEvent(CardMouseEvent cme)
@@ -62,15 +80,31 @@ public static class HeadsUpHoldemGame
         riverCardsEventList.Add(cme);
     }
 
-
+    public static void ResetGame()
+    {
+        gameObj.GameReset();
+        Player = new PlayerStatus("Player", 100);
+        Enemy = new PlayerStatus("Enemy", 100);
+        gameObj.SetPlayer(Player);
+        gameObj.SetPlayer(Enemy);
+        gameObj.SetPlayerPosition();
+    }
 
     public static void Reset()
     {
         Mode = 0;
+        gameObj.ResetPot();
+        Debug.Log(string.Format("DealerPositon({0}) = {1}", gameObj.DealerPosition, gameObj.Players[gameObj.DealerPosition].Name));
+        if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+        {
+            dealerButton.transform.position = new Vector3(99, 73);
+        }
+        else
+        {
+            dealerButton.transform.position = new Vector3(272, 210);
+        }
         deck = new Deck(rand);
         deck.Shuffle();
-        PlayerHands = new Card[2];
-        EnemyHands = new Card[2];
         BoardCards = new Card[5];
         BannedCards = new Card[3];
         foreach (var cme in playerHandsEventList)
@@ -102,15 +136,17 @@ public static class HeadsUpHoldemGame
     {
         if (Mode == 1)
         {
-            PlayerHands = new Card[2];
-            EnemyHands = new Card[2];
-            PlayerHands[0] = deck.Draw();
-            EnemyHands[0] = deck.Draw();
-            PlayerHands[1] = deck.Draw();
-            EnemyHands[1] = deck.Draw();
-            for (var i = 0; i < PlayerHands.Length; i++)
+            var playerHands = new Card[2];
+            var enemyHands = new Card[2];
+            playerHands[0] = deck.Draw();
+            enemyHands[0] = deck.Draw();
+            playerHands[1] = deck.Draw();
+            enemyHands[1] = deck.Draw();
+            Player.SetCards(playerHands);
+            Enemy.SetCards(enemyHands);
+            for (var i = 0; i < Player.Cards.Length; i++)
             {
-                playerHandsEventList[i].SetCard(PlayerHands[i]);
+                playerHandsEventList[i].SetCard(Player.Cards[i]);
                 playerHandsEventList[i].SetFace(true);
             }
 
@@ -133,7 +169,7 @@ public static class HeadsUpHoldemGame
             }
 
             var tempArray = new Card[5];
-            Array.Copy(PlayerHands, 0, tempArray, 0, PlayerHands.Length);
+            Array.Copy(Player.Cards, 0, tempArray, 0, Player.Cards.Length);
             Array.Copy(BoardCards, 0, tempArray, 2, 3);
             var result = PKCheck.CheckHands(tempArray);
             playerHandText.text = result.ToString();
@@ -155,7 +191,7 @@ public static class HeadsUpHoldemGame
             }
 
             var tempArray = new Card[6];
-            Array.Copy(PlayerHands, 0, tempArray, 0, PlayerHands.Length);
+            Array.Copy(Player.Cards, 0, tempArray, 0, Player.Cards.Length);
             Array.Copy(BoardCards, 0, tempArray, 2, 4);
             var result = PKCheck.CheckSixHands(tempArray);
             playerHandText.text = result.ToString();
@@ -177,7 +213,7 @@ public static class HeadsUpHoldemGame
             }
 
             var tempArray = new Card[7];
-            Array.Copy(PlayerHands, 0, tempArray, 0, PlayerHands.Length);
+            Array.Copy(Player.Cards, 0, tempArray, 0, Player.Cards.Length);
             Array.Copy(BoardCards, 0, tempArray, 2, BoardCards.Length);
             var result = PKCheck.CheckSevenHands(tempArray);
             playerHandText.text = result.ToString();
@@ -193,12 +229,12 @@ public static class HeadsUpHoldemGame
         {
             for (var i = 0; i < enemyHandsEventList.Count; i++)
             {
-                enemyHandsEventList[i].SetCard(EnemyHands[i]);
+                enemyHandsEventList[i].SetCard(Enemy.Cards[i]);
                 enemyHandsEventList[i].SetFace(true);
             }
 
             var tempArray = new Card[7];
-            Array.Copy(EnemyHands, 0, tempArray, 0, EnemyHands.Length);
+            Array.Copy(Enemy.Cards, 0, tempArray, 0, Enemy.Cards.Length);
             Array.Copy(BoardCards, 0, tempArray, 2, BoardCards.Length);
             var result = PKCheck.CheckSevenHands(tempArray);
             enemyHandText.text = result.ToString();
