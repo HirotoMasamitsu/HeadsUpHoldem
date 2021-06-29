@@ -8,6 +8,7 @@ public class PlayerGetPokerAction : IGetPokerAction
 
     public PlayerCommand Action { get; set; }
     public int BetSize { get; set; }
+    public int CallSize { get; set; }
 
 
     public PlayerGetPokerAction(PlayerStatus status)
@@ -28,6 +29,11 @@ public class PlayerGetPokerAction : IGetPokerAction
 
     public PokerAction GetPokerAction(HoldemStep step, int callStack, int minimumRaiseSize)
     {
+        return GetPokerAction();
+    }
+
+    public PokerAction GetPokerAction()
+    {
         switch (this.Action)
         {
             case PlayerCommand.Bet:
@@ -37,18 +43,18 @@ public class PlayerGetPokerAction : IGetPokerAction
                 return new PokerAction(this.Action, betChip);
             case PlayerCommand.Check:
             case PlayerCommand.Call:
-                if (callStack == 0)
+                if (CallSize == 0)
                 {
                     return new PokerAction(PlayerCommand.Check, 0);
                 }
-                else if (callStack < status.ChipStack)
+                else if (CallSize < status.ChipStack)
                 {
-                    var chip = status.PutChip(PlayerState.Call, callStack);
+                    var chip = status.PutChip(PlayerState.Call, CallSize);
                     return new PokerAction(PlayerCommand.Call, chip);
                 }
                 else
                 {
-                    var chip = status.PutChip(PlayerState.AllIn, callStack);
+                    var chip = status.PutChip(PlayerState.AllIn, CallSize);
                     return new PokerAction(PlayerCommand.AllIn, chip);
                 }
             default:

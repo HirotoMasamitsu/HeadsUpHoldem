@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using TEMP;
 
 
@@ -10,6 +11,8 @@ public class PlayerStatus
     public Card[] Cards { get; private set; }
     public PlayerState State { get; private set; }
     public int ChipStack { get; private set; }
+
+    private Text text;
 
     public PlayerStatus (string name, int defaultStack)
     {
@@ -38,6 +41,7 @@ public class PlayerStatus
             this.ChipStack = 0;
             this.State = PlayerState.AllIn;
         }
+        UpdateText();
         return ret;
     }
 
@@ -49,5 +53,20 @@ public class PlayerStatus
     public void GetChip(int value)
     {
         this.ChipStack += value;
+        UpdateText();
+    }
+
+    public void SetText(Text textUI)
+    {
+        this.text = textUI;
+        UpdateText();
+    }
+
+    private void UpdateText()
+    {
+        if (this.text != null)
+        {
+            this.text.text = string.Format("{0} Chip: ${1}", this.Name, this.ChipStack);
+        }
     }
 }

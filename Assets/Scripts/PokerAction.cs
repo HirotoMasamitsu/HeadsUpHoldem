@@ -11,4 +11,16 @@ public struct PokerAction
         this.Command = command;
         this.Chip = chip;
     }
+
+    public override string ToString()
+    {
+        switch(this.Command)
+        {
+            case PlayerCommand.Fold:
+            case PlayerCommand.Check:
+                return string.Format("{0}", Command);
+            default:
+                return string.Format("{0} - ${1}", Command, Chip);
+        }
+    }
 }

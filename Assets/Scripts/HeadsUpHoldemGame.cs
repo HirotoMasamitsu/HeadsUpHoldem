@@ -11,11 +11,13 @@ public static class HeadsUpHoldemGame
     private static System.Random rand = new System.Random();
     private static Deck deck;
     private static HeadsUpGameObject gameObj = new HeadsUpGameObject();
+    private static bool firstBetFlag;
 
     private static Text playerHandText;
     private static Text enemyHandText;
-    private static Text potText;
+    private static Text actionText;
     private static GameObject dealerButton;
+    private static Slider betSlider = GameObject.Find("Slider").GetComponent<Slider>();
 
 
     public static PlayerStatus Player { get; private set; }
@@ -35,6 +37,7 @@ public static class HeadsUpHoldemGame
 
     public static int Mode { get; private set; }
 
+
     public static void SetPlayerHandText(Text textUI)
     {
         playerHandText = textUI;
@@ -45,9 +48,19 @@ public static class HeadsUpHoldemGame
         enemyHandText = textUI;
     }
 
+    public static void SetActionText(Text textUI)
+    {
+        actionText = textUI;
+    }
+
     public static void SetPotText(Text textUI)
     {
-        potText = textUI;
+        gameObj.SetPotText(textUI);
+    }
+
+    public static void SetBlindText(Text textUI)
+    {
+        gameObj.SetBlindText(textUI);
     }
 
     public static void SetDealerButton(GameObject obj)
@@ -80,29 +93,25 @@ public static class HeadsUpHoldemGame
         riverCardsEventList.Add(cme);
     }
 
-    public static void ResetGame()
+    public static void ResetGame(Text playerChipUI, Text enemyChipTextUI)
     {
         gameObj.GameReset();
         Player = new PlayerStatus("Player", 100);
+        Player.SetText(playerChipUI);
+        PlayerAction = new PlayerGetPokerAction(Player);
         Enemy = new PlayerStatus("Enemy", 100);
+        Enemy.SetText(enemyChipTextUI);
+        EnemyAction = new EnemyGetPokerAction(Enemy);
         gameObj.SetPlayer(Player);
         gameObj.SetPlayer(Enemy);
         gameObj.SetPlayerPosition();
+        SetButtonMode(false);
     }
 
     public static void Reset()
     {
         Mode = 0;
         gameObj.ResetPot();
-        Debug.Log(string.Format("DealerPositon({0}) = {1}", gameObj.DealerPosition, gameObj.Players[gameObj.DealerPosition].Name));
-        if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
-        {
-            dealerButton.transform.position = new Vector3(99, 73);
-        }
-        else
-        {
-            dealerButton.transform.position = new Vector3(272, 210);
-        }
         deck = new Deck(rand);
         deck.Shuffle();
         BoardCards = new Card[5];
@@ -130,12 +139,15 @@ public static class HeadsUpHoldemGame
         playerHandText.text = "";
         enemyHandText.text = "";
         Mode = 1;
+        Preflop();
     }
 
     public static void Preflop()
     {
+        Debug.Log(string.Format("Preflop Mode:{0}", Mode));
         if (Mode == 1)
         {
+            firstBetFlag = true;
             var playerHands = new Card[2];
             var enemyHands = new Card[2];
             playerHands[0] = deck.Draw();
@@ -150,7 +162,48 @@ public static class HeadsUpHoldemGame
                 playerHandsEventList[i].SetFace(true);
             }
 
-            Mode = 2;
+            Debug.Log(string.Format("DealerPositon({0}) = {1}", gameObj.DealerPosition, gameObj.Players[gameObj.DealerPosition].Name));
+            if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+            {
+                dealerButton.transform.position = new Vector3(105, 137);
+                Player.PutChip(PlayerState.Active, gameObj.SmallBlind);
+                gameObj.AddPot(gameObj.SmallBlind);
+                Enemy.PutChip(PlayerState.Active, gameObj.BigBlind);
+                gameObj.AddPot(gameObj.BigBlind);
+
+                actionText.text = string.Format("Big Blind: ${0}", gameObj.BigBlind);
+                EnemyAction.BetSize = gameObj.BigBlind;
+                SetPlayerActionControl(gameObj.BigBlind - gameObj.SmallBlind, gameObj.BigBlind);
+
+            }
+            else
+            {
+                dealerButton.transform.position = new Vector3(277, 291);
+                Player.PutChip(PlayerState.Active, gameObj.BigBlind);
+                gameObj.AddPot(gameObj.BigBlind);
+                Enemy.PutChip(PlayerState.Active, gameObj.SmallBlind);
+                gameObj.AddPot(gameObj.SmallBlind);
+
+                var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Preflop, gameObj.BigBlind - gameObj.SmallBlind, gameObj.BigBlind);
+                Debug.Log(enemyAction);
+                if (enemyAction.Command == PlayerCommand.Fold)
+                {
+                    Player.GetChip(gameObj.GetPot());
+                    Mode = 0;
+                    SetButtonMode(false);
+                    return;
+                }
+                else
+                {
+                    actionText.text = string.Format("Enemy: {0}", enemyAction);
+                    gameObj.AddPot(enemyAction.Chip);
+                    SetPlayerActionControl(enemyAction.Chip - (gameObj.BigBlind - gameObj.SmallBlind), gameObj.BigBlind);
+
+                }
+            }
+
+            //Mode = 2;
+            SetButtonMode(true);
         }
     }
 
@@ -158,6 +211,7 @@ public static class HeadsUpHoldemGame
     {
         if (Mode == 2)
         {
+            firstBetFlag = false;
             BannedCards[0] = deck.Draw();
             BoardCards[0] = deck.Draw();
             BoardCards[1] = deck.Draw();
@@ -174,7 +228,33 @@ public static class HeadsUpHoldemGame
             var result = PKCheck.CheckHands(tempArray);
             playerHandText.text = result.ToString();
 
-            Mode = 3;
+            actionText.text = "Flop Open";
+
+            if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+            {
+                var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Flop, 0, gameObj.BigBlind);
+                Debug.Log(enemyAction);
+                if (enemyAction.Command == PlayerCommand.Fold)
+                {
+                    Player.GetChip(gameObj.GetPot());
+                    Mode = 0;
+                    SetButtonMode(false);
+                    return;
+                }
+                else
+                {
+                    actionText.text = string.Format("Enemy: {0}", enemyAction);
+                    gameObj.AddPot(enemyAction.Chip);
+                    SetPlayerActionControl(enemyAction.Chip, gameObj.BigBlind);
+
+                }
+            }
+            else
+            {
+                SetPlayerActionControl(0, gameObj.BigBlind);
+            }
+
+            //Mode = 3;
         }
     }
 
@@ -182,6 +262,7 @@ public static class HeadsUpHoldemGame
     {
         if (Mode == 3)
         {
+            firstBetFlag = false;
             BannedCards[1] = deck.Draw();
             BoardCards[3] = deck.Draw();
             for (var i = 0; i < turnCardsEventList.Count; i++)
@@ -196,7 +277,33 @@ public static class HeadsUpHoldemGame
             var result = PKCheck.CheckSixHands(tempArray);
             playerHandText.text = result.ToString();
 
-            Mode = 4;
+            actionText.text = "Turn Open";
+
+            if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+            {
+                var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Flop, 0, gameObj.BigBlind);
+                Debug.Log(enemyAction);
+                if (enemyAction.Command == PlayerCommand.Fold)
+                {
+                    Player.GetChip(gameObj.GetPot());
+                    Mode = 0;
+                    SetButtonMode(false);
+                    return;
+                }
+                else
+                {
+                    actionText.text = string.Format("Enemy: {0}", enemyAction);
+                    gameObj.AddPot(enemyAction.Chip);
+                    SetPlayerActionControl(enemyAction.Chip, gameObj.BigBlind);
+
+                }
+            }
+            else
+            {
+                SetPlayerActionControl(0, gameObj.BigBlind);
+            }
+
+            //Mode = 4;
         }
     }
 
@@ -204,6 +311,7 @@ public static class HeadsUpHoldemGame
     {
         if (Mode == 4)
         {
+            firstBetFlag = false;
             BannedCards[2] = deck.Draw();
             BoardCards[4] = deck.Draw();
             for (var i = 0; i < riverCardsEventList.Count; i++)
@@ -218,7 +326,33 @@ public static class HeadsUpHoldemGame
             var result = PKCheck.CheckSevenHands(tempArray);
             playerHandText.text = result.ToString();
 
-            Mode = 5;
+            actionText.text = "River Open";
+
+            if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+            {
+                var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Flop, 0, gameObj.BigBlind);
+                Debug.Log(enemyAction);
+                if (enemyAction.Command == PlayerCommand.Fold)
+                {
+                    Player.GetChip(gameObj.GetPot());
+                    Mode = 0;
+                    SetButtonMode(false);
+                    return;
+                }
+                else
+                {
+                    actionText.text = string.Format("Enemy: {0}", enemyAction);
+                    gameObj.AddPot(enemyAction.Chip);
+                    SetPlayerActionControl(enemyAction.Chip, gameObj.BigBlind);
+
+                }
+            }
+            else
+            {
+                SetPlayerActionControl(0, gameObj.BigBlind);
+            }
+
+            //Mode = 5;
         }
 
     }
@@ -234,13 +368,234 @@ public static class HeadsUpHoldemGame
             }
 
             var tempArray = new Card[7];
-            Array.Copy(Enemy.Cards, 0, tempArray, 0, Enemy.Cards.Length);
+            Array.Copy(Player.Cards, 0, tempArray, 0, Player.Cards.Length);
             Array.Copy(BoardCards, 0, tempArray, 2, BoardCards.Length);
             var result = PKCheck.CheckSevenHands(tempArray);
-            enemyHandText.text = result.ToString();
+            Array.Copy(Enemy.Cards, 0, tempArray, 0, Enemy.Cards.Length);
+            Array.Copy(BoardCards, 0, tempArray, 2, BoardCards.Length);
+            var enemyResult = PKCheck.CheckSevenHands(tempArray);
+            enemyHandText.text = enemyResult.ToString();
+
+            var compare = result.CompareTo(enemyResult);
+            if (compare == 0)
+            {
+                actionText.text = string.Format("Draw...");
+                var pot = gameObj.GetPot();
+                Player.GetChip(pot / 2);
+                Enemy.GetChip(pot / 2);
+                if ((pot % 2) == 1)
+                {
+                    if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+                    {
+                        Enemy.GetChip(1);
+                    }
+                    else
+                    {
+                        Player.GetChip(1);
+                    }
+
+                }
+            }
+            else if (compare > 0)
+            {
+                actionText.text = "Player Win!!";
+                var pot = gameObj.GetPot();
+                Player.GetChip(pot);
+            }
+            else
+            {
+                actionText.text = "Player Lose...";
+                var pot = gameObj.GetPot();
+                Enemy.GetChip(pot);
+            }
 
             Mode = 6;
+            SetButtonMode(false);
         }
     }
 
+
+    private static void SetPlayerActionControl(int callSize, int minimumBetSize)
+    {
+        betSlider.minValue = PlayerAction.GetMinimumRaiseSize(callSize, minimumBetSize);
+        betSlider.maxValue = PlayerAction.GetMaximumRaiseSize();
+        betSlider.value = betSlider.minValue;
+        if (firstBetFlag)
+        {
+            GameObject.Find("RaiseButtonText").GetComponent<Text>().text = "Raise";
+        }
+        else
+        {
+            GameObject.Find("RaiseButtonText").GetComponent<Text>().text = "Bet";
+        }
+        if (callSize == 0)
+        {
+            GameObject.Find("CallButtonText").GetComponent<Text>().text = "Check";
+        } 
+        else
+        {
+            GameObject.Find("CallButtonText").GetComponent<Text>().text = string.Format("Call(${0})", callSize);
+        }
+        PlayerAction.CallSize = callSize;
+        Debug.Log(string.Format("SetPlayerActionControl - callsize:{0} minBetSize:{1}", callSize, minimumBetSize));
+
+    }
+
+    public static void PlayerRaise(int betSize)
+    {
+        PlayerAction.Action = PlayerCommand.Raise;
+        PlayerAction.BetSize = betSize;
+        ExecutePlayerAction();
+    }
+
+    public static void PlayerCall()
+    {
+        PlayerAction.Action = PlayerCommand.Call;
+        ExecutePlayerAction();
+    }
+
+    public static void PlayerFold()
+    {
+        PlayerAction.Action = PlayerCommand.Fold;
+        ExecutePlayerAction();
+    }
+
+    private static void ExecutePlayerAction()
+    {
+        var action = PlayerAction.GetPokerAction();
+        actionText.text = string.Format("Player: {0}", action);
+        gameObj.AddPot(action.Chip);
+        switch (action.Command)
+        {
+            case PlayerCommand.Fold:
+                Enemy.GetChip(gameObj.GetPot());
+                Mode = 0;
+                SetButtonMode(false);
+                return;
+            default:
+                var callSize = Math.Max(0, action.Chip - EnemyAction.BetSize);
+                if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
+                {
+                    var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Preflop, callSize, gameObj.BigBlind);
+                    Debug.Log(enemyAction);
+                    switch (enemyAction.Command)
+                    {
+                        case PlayerCommand.Fold:
+                            Player.GetChip(gameObj.GetPot());
+                            Mode = 0;
+                            SetButtonMode(false);
+                            break;
+                        case PlayerCommand.Bet:
+                        case PlayerCommand.Raise:
+                        case PlayerCommand.AllIn:
+                            firstBetFlag = true;
+                            actionText.text = string.Format("Enemy: {0}", enemyAction);
+                            gameObj.AddPot(enemyAction.Chip);
+                            SetPlayerActionControl(enemyAction.Chip - action.Chip, gameObj.BigBlind);
+                            break;
+                        default:
+                            actionText.text = string.Format("Enemy: {0}", enemyAction);
+                            gameObj.AddPot(enemyAction.Chip);
+                            Mode += 1;
+                            switch (Mode)
+                            {
+                                case 2:
+                                    Flop();
+                                    break;
+                                case 3:
+                                    Turn();
+                                    break;
+                                case 4:
+                                    River();
+                                    break;
+                                case 5:
+                                    Showdown();
+                                    break;
+                            }
+                            break;
+
+                    }
+                }
+                else
+                {
+                    switch (action.Command)
+                    {
+                        case PlayerCommand.Bet:
+                        case PlayerCommand.Raise:
+                        case PlayerCommand.AllIn:
+                            firstBetFlag = true;
+                            var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Preflop, callSize, gameObj.BigBlind);
+                            Debug.Log(enemyAction);
+                            switch (enemyAction.Command)
+                            {
+                                case PlayerCommand.Fold:
+                                    Player.GetChip(gameObj.GetPot());
+                                    Mode = 0;
+                                    SetButtonMode(false);
+                                    break;
+                                case PlayerCommand.Bet:
+                                case PlayerCommand.Raise:
+                                case PlayerCommand.AllIn:
+                                    firstBetFlag = true;
+                                    actionText.text = string.Format("Enemy: {0}", enemyAction);
+                                    gameObj.AddPot(enemyAction.Chip);
+                                    SetPlayerActionControl(enemyAction.Chip - action.Chip, gameObj.BigBlind);
+                                    break;
+                                default:
+                                    actionText.text = string.Format("Enemy: {0}", enemyAction);
+                                    gameObj.AddPot(enemyAction.Chip);
+                                    Mode += 1;
+                                    switch (Mode)
+                                    {
+                                        case 2:
+                                            Flop();
+                                            break;
+                                        case 3:
+                                            Turn();
+                                            break;
+                                        case 4:
+                                            River();
+                                            break;
+                                        case 5:
+                                            Showdown();
+                                            break;
+                                    }
+                                    break;
+
+                            }
+                            break;
+                        default:
+                            Mode += 1;
+                            switch (Mode)
+                            {
+                                case 2:
+                                    Flop();
+                                    break;
+                                case 3:
+                                    Turn();
+                                    break;
+                                case 4:
+                                    River();
+                                    break;
+                                case 5:
+                                    Showdown();
+                                    break;
+                            }
+                            break;
+                    }
+                }
+                break;
+
+        }
+    }
+
+    private static void SetButtonMode(bool commandEnable)
+    {
+        GameObject.Find("RaiseButton").GetComponent<Button>().enabled = commandEnable;
+        GameObject.Find("Slider").GetComponent<Slider>().enabled = commandEnable;
+        GameObject.Find("InputField").GetComponent<InputField>().enabled = commandEnable;
+        GameObject.Find("CallButton").GetComponent<Button>().enabled = commandEnable;
+        GameObject.Find("FoldButton").GetComponent<Button>().enabled = commandEnable;
+        GameObject.Find("TempButton").GetComponent<Button>().enabled = !commandEnable;
+    }
 }

@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
+using UnityEngine.UI;
 
 public class HeadsUpGameObject
 {
@@ -8,6 +10,8 @@ public class HeadsUpGameObject
     private List<int> potList;
     private System.Random rand;
 
+    private Text potText;
+    private Text blindText;
 
     public int SmallBlind { get; private set; }
     public int BigBlind { get; private set; }
@@ -38,6 +42,18 @@ public class HeadsUpGameObject
         this.playerList = new List<PlayerStatus>();
         this.rand = new System.Random();
         this.DealerPosition = 0;
+    }
+
+    public void SetPotText(Text textUI)
+    {
+        this.potText = textUI;
+        UpdatePotText();
+    }
+
+    public void SetBlindText(Text textUI)
+    {
+        this.blindText = textUI;
+        UpdateBlindText();
     }
 
     public void SetPlayer(PlayerStatus player)
@@ -79,6 +95,7 @@ public class HeadsUpGameObject
         {
             this.potList.Add(overBet);
         }
+        UpdatePotText();
     }
 
     public int GetPot(int potIndex = 0)
@@ -95,11 +112,45 @@ public class HeadsUpGameObject
     {
         this.potList.Clear();
         this.DealerPosition = (this.DealerPosition + 1) % this.playerList.Count;
+        UpdatePotText();
     }
 
     public void GameReset()
     {
         this.potList.Clear();
         this.playerList.Clear();
+        UpdatePotText();
+    }
+
+    private void UpdatePotText()
+    {
+        if (this.potText != null)
+        {
+            if (this.potList.Count > 0)
+            {
+                var sb = new StringBuilder();
+                for (var i = 0; i < this.potList.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        sb.Append(", ");
+                    }
+                    sb.AppendFormat("${0}", this.potList[i]);
+                }
+                this.potText.text = string.Format("Pot: {0}", sb.ToString());
+            }
+            else
+            {
+                this.potText.text = "Pot: $0";
+            }
+        }
+    }
+
+    private void UpdateBlindText()
+    {
+        if (this.blindText != null)
+        {
+            this.potText.text = string.Format("SB/BB : ${0}/${1}", this.SmallBlind, this.BigBlind);
+        }
     }
 }

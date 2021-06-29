@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class tempButtonBehaviourScript : MonoBehaviour
 {
@@ -9,7 +11,6 @@ public class tempButtonBehaviourScript : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
     }
 
     // Update is called once per frame
@@ -23,32 +24,14 @@ public class tempButtonBehaviourScript : MonoBehaviour
         Debug.Log("tempButton OnClick! " + gameObject.name);
         if (resetFlag)
         {
-            switch (HeadsUpHoldemGame.Mode)
-            {
-                case 1:
-                    HeadsUpHoldemGame.Preflop();
-                    break;
-                case 2:
-                    HeadsUpHoldemGame.Flop();
-                    break;
-                case 3:
-                    HeadsUpHoldemGame.Turn();
-                    break;
-                case 4:
-                    HeadsUpHoldemGame.River();
-                    break;
-                case 5:
-                    HeadsUpHoldemGame.Showdown();
-                    break;
-                default:
-                    HeadsUpHoldemGame.Reset();
-                    break;
-            }
+            HeadsUpHoldemGame.Reset();
         }
         else
         {
-            HeadsUpHoldemGame.ResetGame();
+            HeadsUpHoldemGame.ResetGame(GameObject.Find("PlayerChipText").GetComponent<Text>(), GameObject.Find("EnemyChipText").GetComponent<Text>());
             resetFlag = true;
+            Debug.Log("tempButton ResetGame! " + gameObject.name);
+            GameObject.Find("TempButtonText").GetComponent<Text>().text = "Next Game";
         }
     }
 
