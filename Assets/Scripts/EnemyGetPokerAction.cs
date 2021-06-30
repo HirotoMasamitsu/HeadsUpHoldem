@@ -12,17 +12,23 @@ public class EnemyGetPokerAction : IGetPokerAction
     private Card[] board;
     private System.Random rand;
     private int potSize;
+    private bool bluffFlag;
 
     public EnemyGetPokerAction(PlayerStatus status)
     {
         this.status = status;
         this.rand = new System.Random();
+        bluffFlag = false;
     }
 
-    public void SetBoard(Card[] board, int potSize)
+    public void SetBoard(Card[] board, int potSize, bool resetBluff = false)
     {
         this.board = board;
         this.potSize = potSize;
+        if (resetBluff)
+        {
+            bluffFlag = false;
+        }
     }
 
     public PokerAction GetPokerAction(HoldemStep step, int callStack, int minimumRaiseSize)
@@ -35,7 +41,7 @@ public class EnemyGetPokerAction : IGetPokerAction
         switch (step)
         {
             case HoldemStep.Preflop:
-                if (isPairHand || (isSuited && total >= 16) || total >= 21)
+                if (isPairHand || (isSuited && total >= 16) || total >= 21 || bluffFlag)
                 {
                     if (GetRandFlag(0.7))
                     {
@@ -48,8 +54,10 @@ public class EnemyGetPokerAction : IGetPokerAction
                 }
                 else if (total >= 13 || callStack == 0)
                 {
+                    bluffFlag = false;
                     if (GetRandFlag(0.1))
                     {
+                        bluffFlag = true;
                         return Raise(Math.Max(callStack, minimumRaiseSize) * 3);
                     }
                     else
@@ -59,6 +67,7 @@ public class EnemyGetPokerAction : IGetPokerAction
                 }
                 else
                 {
+                    bluffFlag = false;
                     if (GetRandFlag(0.3))
                     {
                         return Call(callStack);
@@ -76,9 +85,9 @@ public class EnemyGetPokerAction : IGetPokerAction
                     Array.Copy(this.board, 0, tempArray, 2, 3);
                     var result = PKCheck.CheckHands(tempArray);
                     var pivotHands = new PokerResults(PKHands.OnePair, new int[] { 11, 2 });
-                    if (result.CompareTo(pivotHands) >= 0)
+                    if (result.CompareTo(pivotHands) >= 0 || bluffFlag)
                     {
-                        if (GetRandFlag(0.7))
+                        if (GetRandFlag(0.8))
                         {
                             return Raise(Math.Max(callStack * 2, potSize / 2));
                         }
@@ -91,6 +100,7 @@ public class EnemyGetPokerAction : IGetPokerAction
                     {
                         if (GetRandFlag(0.05))
                         {
+                            bluffFlag = true;
                             return Raise(Math.Max(callStack * 2, potSize / 2));
                         }
                         else if (GetRandFlag(0.7) || callStack == 0)
@@ -113,9 +123,9 @@ public class EnemyGetPokerAction : IGetPokerAction
                     Array.Copy(this.board, 0, tempArray, 2, 4);
                     var result = PKCheck.CheckSixHands(tempArray);
                     var pivotHands = new PokerResults(PKHands.OnePair, new int[] { 12, 2 });
-                    if (result.CompareTo(pivotHands) >= 0)
+                    if (result.CompareTo(pivotHands) >= 0 || bluffFlag)
                     {
-                        if (GetRandFlag(0.6))
+                        if (GetRandFlag(0.8))
                         {
                             return Raise(Math.Max(callStack * 2, potSize / 2));
                         }
@@ -128,9 +138,10 @@ public class EnemyGetPokerAction : IGetPokerAction
                     {
                         if (GetRandFlag(0.05))
                         {
+                            bluffFlag = true;
                             return Raise(Math.Max(callStack * 2, potSize / 2));
                         }
-                        else if (GetRandFlag(0.7) || callStack == 0)
+                        else if (GetRandFlag(0.6) || callStack == 0)
                         {
                             return Call(callStack);
                         }
@@ -149,9 +160,9 @@ public class EnemyGetPokerAction : IGetPokerAction
                     Array.Copy(this.board, 0, tempArray, 2, this.board.Length);
                     var result = PKCheck.CheckSevenHands(tempArray);
                     var pivotHands = new PokerResults(PKHands.TwoPair, new int[] { 2, 3 });
-                    if (result.CompareTo(pivotHands) >= 0)
+                    if (result.CompareTo(pivotHands) >= 0 || bluffFlag)
                     {
-                        if (GetRandFlag(0.5))
+                        if (GetRandFlag(0.8))
                         {
                             return Raise(Math.Max(callStack * 2, potSize / 2));
                         }
@@ -166,7 +177,7 @@ public class EnemyGetPokerAction : IGetPokerAction
                         {
                             return Raise(Math.Max(callStack * 2, potSize / 2));
                         }
-                        else if (GetRandFlag(0.7) || callStack == 0)
+                        else if (GetRandFlag(0.5) || callStack == 0)
                         {
                             return Call(callStack);
                         }

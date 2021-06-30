@@ -189,7 +189,7 @@ public static class HeadsUpHoldemGame
                 enemyActionText.text = string.Format("Small Blind: ${0}", gameObj.SmallBlind);
                 playerActionText.text = string.Format("Big Blind: ${0}", gameObj.BigBlind);
 
-                EnemyAction.SetBoard(null, gameObj.GetPot());
+                EnemyAction.SetBoard(null, gameObj.GetPot(), true);
                 var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Preflop, gameObj.BigBlind - gameObj.SmallBlind, gameObj.BigBlind);
                 Debug.Log(enemyAction);
                 actionText.text = string.Format("Enemy: {0}", enemyAction);
