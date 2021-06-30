@@ -189,12 +189,14 @@ public static class HeadsUpHoldemGame
                 enemyActionText.text = string.Format("Small Blind: ${0}", gameObj.SmallBlind);
                 playerActionText.text = string.Format("Big Blind: ${0}", gameObj.BigBlind);
 
+                EnemyAction.SetBoard(null, gameObj.GetPot());
                 var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Preflop, gameObj.BigBlind - gameObj.SmallBlind, gameObj.BigBlind);
                 Debug.Log(enemyAction);
                 actionText.text = string.Format("Enemy: {0}", enemyAction);
                 enemyActionText.text = string.Format("Enemy: {0}", enemyAction);
                 if (enemyAction.Command == PlayerCommand.Fold)
                 {
+                    actionText.text = "Player Win!!";
                     Player.GetChip(gameObj.GetPot());
                     Mode = 0;
                     SetButtonMode(false);
@@ -236,14 +238,28 @@ public static class HeadsUpHoldemGame
 
             actionText.text = "Flop Open";
 
+            if (Player.State == PlayerState.AllIn || Enemy.State == PlayerState.AllIn)
+            {
+                for (var i = 0; i < enemyHandsEventList.Count; i++)
+                {
+                    enemyHandsEventList[i].SetCard(Enemy.Cards[i]);
+                    enemyHandsEventList[i].SetFace(true);
+                }
+                Mode += 1;
+                Turn();
+                return;
+            }
+
             if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
             {
+                EnemyAction.SetBoard(BoardCards, gameObj.GetPot());
                 var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Flop, 0, gameObj.BigBlind);
                 Debug.Log(enemyAction);
                 actionText.text = string.Format("Enemy: {0}", enemyAction);
                 enemyActionText.text = string.Format("Enemy: {0}", enemyAction);
                 if (enemyAction.Command == PlayerCommand.Fold)
                 {
+                    actionText.text = "Player Win!!";
                     Player.GetChip(gameObj.GetPot());
                     Mode = 0;
                     SetButtonMode(false);
@@ -286,14 +302,28 @@ public static class HeadsUpHoldemGame
 
             actionText.text = "Turn Open";
 
+            if (Player.State == PlayerState.AllIn || Enemy.State == PlayerState.AllIn)
+            {
+                for (var i = 0; i < enemyHandsEventList.Count; i++)
+                {
+                    enemyHandsEventList[i].SetCard(Enemy.Cards[i]);
+                    enemyHandsEventList[i].SetFace(true);
+                }
+                Mode += 1;
+                River();
+                return;
+            }
+
             if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
             {
+                EnemyAction.SetBoard(BoardCards, gameObj.GetPot());
                 var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Flop, 0, gameObj.BigBlind);
                 Debug.Log(enemyAction);
                 actionText.text = string.Format("Enemy: {0}", enemyAction);
                 enemyActionText.text = string.Format("Enemy: {0}", enemyAction);
                 if (enemyAction.Command == PlayerCommand.Fold)
                 {
+                    actionText.text = "Player Win!!";
                     Player.GetChip(gameObj.GetPot());
                     Mode = 0;
                     SetButtonMode(false);
@@ -336,8 +366,21 @@ public static class HeadsUpHoldemGame
 
             actionText.text = "River Open";
 
+            if (Player.State == PlayerState.AllIn || Enemy.State == PlayerState.AllIn)
+            {
+                for (var i = 0; i < enemyHandsEventList.Count; i++)
+                {
+                    enemyHandsEventList[i].SetCard(Enemy.Cards[i]);
+                    enemyHandsEventList[i].SetFace(true);
+                }
+                Mode += 1;
+                Showdown();
+                return;
+            }
+
             if (gameObj.Players[gameObj.DealerPosition].Name == "Player")
             {
+                EnemyAction.SetBoard(BoardCards, gameObj.GetPot());
                 var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Flop, 0, gameObj.BigBlind);
                 Debug.Log(enemyAction);
                 actionText.text = string.Format("Enemy: {0}", enemyAction);
@@ -345,6 +388,7 @@ public static class HeadsUpHoldemGame
                 if (enemyAction.Command == PlayerCommand.Fold)
                 {
                     Player.GetChip(gameObj.GetPot());
+                    actionText.text = "Player Win!!";
                     Mode = 0;
                     SetButtonMode(false);
                     return;
@@ -479,6 +523,7 @@ public static class HeadsUpHoldemGame
         {
             case PlayerCommand.Fold:
                 Enemy.GetChip(gameObj.GetPot());
+                actionText.text = "Player Lose...";
                 Mode = 0;
                 SetButtonMode(false);
                 return;
@@ -506,6 +551,7 @@ public static class HeadsUpHoldemGame
                             mode = HoldemStep.Preflop;
                             break;
                     }
+                    EnemyAction.SetBoard(BoardCards, gameObj.GetPot());
                     var enemyAction = EnemyAction.GetPokerAction(mode, callSize, gameObj.BigBlind);
                     Debug.Log(enemyAction);
                     actionText.text = string.Format("Enemy: {0}", enemyAction);
@@ -513,16 +559,49 @@ public static class HeadsUpHoldemGame
                     switch (enemyAction.Command)
                     {
                         case PlayerCommand.Fold:
+                            actionText.text = "Player Win!!";
                             Player.GetChip(gameObj.GetPot());
                             Mode = 0;
                             SetButtonMode(false);
                             break;
                         case PlayerCommand.Bet:
                         case PlayerCommand.Raise:
-                        case PlayerCommand.AllIn:
                             firstBetFlag = true;
                             gameObj.AddPot(enemyAction.Chip);
                             SetPlayerActionControl(enemyAction.Chip - action.Chip, gameObj.BigBlind);
+                            break;
+                        case PlayerCommand.AllIn:
+                            var toCallSize = enemyAction.Chip - action.Chip;
+                            if (toCallSize <= 0)
+                            {
+                                gameObj.AddPot(enemyAction.Chip);
+                                gameObj.AddPot(toCallSize * -1);
+                                Player.GetChip(toCallSize * -1);
+                                Mode += 1;
+                                switch (Mode)
+                                {
+                                    case 2:
+                                        Flop();
+                                        break;
+                                    case 3:
+                                        Turn();
+                                        break;
+                                    case 4:
+                                        River();
+                                        break;
+                                    case 5:
+                                        Showdown();
+                                        break;
+                                }
+                                break;
+                            } 
+                            else
+                            {
+                                firstBetFlag = true;
+                                gameObj.AddPot(enemyAction.Chip);
+                                SetPlayerActionControl(enemyAction.Chip - action.Chip, gameObj.BigBlind);
+                                break;
+                            }
                             break;
                         default:
                             gameObj.AddPot(enemyAction.Chip);
@@ -552,8 +631,8 @@ public static class HeadsUpHoldemGame
                     {
                         case PlayerCommand.Bet:
                         case PlayerCommand.Raise:
-                        case PlayerCommand.AllIn:
                             firstBetFlag = true;
+                            EnemyAction.SetBoard(BoardCards, gameObj.GetPot());
                             var enemyAction = EnemyAction.GetPokerAction(HoldemStep.Preflop, callSize, gameObj.BigBlind);
                             Debug.Log(enemyAction);
                             actionText.text = string.Format("Enemy: {0}", enemyAction);
@@ -561,16 +640,49 @@ public static class HeadsUpHoldemGame
                             switch (enemyAction.Command)
                             {
                                 case PlayerCommand.Fold:
+                                    actionText.text = "Player Win!!";
                                     Player.GetChip(gameObj.GetPot());
                                     Mode = 0;
                                     SetButtonMode(false);
                                     break;
                                 case PlayerCommand.Bet:
                                 case PlayerCommand.Raise:
-                                case PlayerCommand.AllIn:
                                     firstBetFlag = true;
                                     gameObj.AddPot(enemyAction.Chip);
                                     SetPlayerActionControl(enemyAction.Chip - action.Chip, gameObj.BigBlind);
+                                    break;
+                                case PlayerCommand.AllIn:
+                                    var toCallSize = enemyAction.Chip - action.Chip;
+                                    if (toCallSize <= 0)
+                                    {
+                                        gameObj.AddPot(enemyAction.Chip);
+                                        gameObj.AddPot(toCallSize);
+                                        Player.GetChip(toCallSize * -1);
+                                        Mode += 1;
+                                        switch (Mode)
+                                        {
+                                            case 2:
+                                                Flop();
+                                                break;
+                                            case 3:
+                                                Turn();
+                                                break;
+                                            case 4:
+                                                River();
+                                                break;
+                                            case 5:
+                                                Showdown();
+                                                break;
+                                        }
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        firstBetFlag = true;
+                                        gameObj.AddPot(enemyAction.Chip);
+                                        SetPlayerActionControl(enemyAction.Chip - action.Chip, gameObj.BigBlind);
+                                        break;
+                                    }
                                     break;
                                 default:
                                     gameObj.AddPot(enemyAction.Chip);
@@ -592,6 +704,108 @@ public static class HeadsUpHoldemGame
                                     }
                                     break;
 
+                            }
+                            break;
+                        case PlayerCommand.AllIn:
+                            if (callSize <= 0)
+                            {
+                                var diff = EnemyAction.BetSize - action.Chip;
+                                gameObj.AddPot(diff * -1);
+                                Enemy.GetChip(diff);
+
+                                Mode += 1;
+                                switch (Mode)
+                                {
+                                    case 2:
+                                        Flop();
+                                        break;
+                                    case 3:
+                                        Turn();
+                                        break;
+                                    case 4:
+                                        River();
+                                        break;
+                                    case 5:
+                                        Showdown();
+                                        break;
+                                }
+                            }
+                            else
+                            {
+                                firstBetFlag = true;
+                                EnemyAction.SetBoard(BoardCards, gameObj.GetPot());
+                                var enemyAction2 = EnemyAction.GetPokerAction(HoldemStep.Preflop, callSize, gameObj.BigBlind);
+                                Debug.Log(enemyAction2);
+                                actionText.text = string.Format("Enemy: {0}", enemyAction2);
+                                enemyActionText.text = string.Format("Enemy: {0}", enemyAction2);
+                                switch (enemyAction2.Command)
+                                {
+                                    case PlayerCommand.Fold:
+                                        actionText.text = "Player Win!!";
+                                        Player.GetChip(gameObj.GetPot());
+                                        Mode = 0;
+                                        SetButtonMode(false);
+                                        break;
+                                    case PlayerCommand.Bet:
+                                    case PlayerCommand.Raise:
+                                        firstBetFlag = true;
+                                        gameObj.AddPot(enemyAction2.Chip);
+                                        SetPlayerActionControl(enemyAction2.Chip - action.Chip, gameObj.BigBlind);
+                                        break;
+                                    case PlayerCommand.AllIn:
+                                        var toCallSize = enemyAction2.Chip - action.Chip;
+                                        if (toCallSize <= 0)
+                                        {
+                                            gameObj.AddPot(enemyAction2.Chip);
+                                            gameObj.AddPot(toCallSize * -1);
+                                            Player.GetChip(toCallSize * -1);
+                                            Mode += 1;
+                                            switch (Mode)
+                                            {
+                                                case 2:
+                                                    Flop();
+                                                    break;
+                                                case 3:
+                                                    Turn();
+                                                    break;
+                                                case 4:
+                                                    River();
+                                                    break;
+                                                case 5:
+                                                    Showdown();
+                                                    break;
+                                            }
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            firstBetFlag = true;
+                                            gameObj.AddPot(enemyAction2.Chip);
+                                            SetPlayerActionControl(enemyAction2.Chip - action.Chip, gameObj.BigBlind);
+                                            break;
+                                        }
+                                        break;
+                                    default:
+                                        gameObj.AddPot(enemyAction2.Chip);
+                                        Mode += 1;
+                                        switch (Mode)
+                                        {
+                                            case 2:
+                                                Flop();
+                                                break;
+                                            case 3:
+                                                Turn();
+                                                break;
+                                            case 4:
+                                                River();
+                                                break;
+                                            case 5:
+                                                Showdown();
+                                                break;
+                                        }
+                                        break;
+
+                                }
                             }
                             break;
                         default:

@@ -35,7 +35,7 @@ public class PlayerStatus
             ret = value;
             this.State = state;
         }
-        if (value >= this.ChipStack)
+        else if (value >= this.ChipStack)
         {
             ret = this.ChipStack;
             this.ChipStack = 0;
